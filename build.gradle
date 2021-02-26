@@ -7,6 +7,12 @@ import de.undercouch.gradle.tasks.download.Download
 File tmpFolder = new File("/tmp/gretl-share")
 def pathToTempFolder = tmpFolder.getAbsolutePath()
 
+def iliModelHoheitsgrenzen = "SO_Hoheitsgrenzen_Publikation_20170626"
+def dbSchemaHoheitsgrenzen = "agi_hoheitsgrenzen_pub"
+
+def iliModelAnnex = "OeREB_ExtractAnnex_V1_0"
+def dbSchemaAnnex = "agi_oereb_annex"
+
 def iliModelWaldgrenzen = "SO_AWJF_Statische_Waldgrenzen_20191119"
 def dbSchemaWaldgrenzen = "awjf_statische_waldgrenze"
 
@@ -16,6 +22,19 @@ def mgdmWaldgrenzenXtfFileName = "ch.so.awjf.waldgrenzen.mgdm.xtf"
 def mgdmWaldgrenzenZipFileName = "ch.so.awjf.waldgrenzen.mdgm.zip"
 
 def aiLogin = aiUser + ":" + aiPwd
+
+task createSchemaHoheitsgrenzen(type: SqlExecutor) {
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    sqlFiles = ['schema/agi_hoheitsgrenzen_pub.sql']
+}
+
+task importDataHoheitsgrenzen(type: Ili2pgImport) {
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    models = iliModelHoheitsgrenzen
+    dbschema = dbSchemaHoheitsgrenzen
+    dataFile = file("ch.so.agi.hoheitsgrenzen.xtf")
+    disableValidation = true
+}
 
 task createSchemaWaldgrenzen(type: SqlExecutor){
     database = [dbUriEdit, dbUserEdit, dbPwdEdit]
@@ -35,48 +54,61 @@ task createSchemaMgdmWaldgrenzen(type: SqlExecutor){
     sqlFiles = ['schema/awjf_statische_waldgrenzen_mgdm.sql']
 }
 
+task createSchemaAnnex(type: SqlExecutor){
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    sqlFiles = ['schema/agi_oereb_annex.sql']
+}
+
+task importDataAnnex(type: Ili2pgImport) {
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    models = iliModelAnnex
+    dbschema = dbSchemaAnnex
+    dataFile = file("ch.so.agi.OeREB_extractAnnex.oereb.xtf")
+    disableValidation = true
+}
 
 // GRETL-Job begins here...
 
 
-// task transferWaldabstandslinien(type: SqlExecutor) {
-//     database = [dbUriEdit, dbUserEdit, dbPwdEdit]
-//     sqlFiles = ['truncate_all_arp_waldabstandslinien_mgdm_tables.sql', 'arp_waldabstandslinien_mgdm.sql']
-// }
 
-// task exportMgdmWaldabstandslinien(type: Ili2pgExport, dependsOn: 'transferWaldabstandslinien') {
-//     database = [dbUriEdit, dbUserEdit, dbPwdEdit]
-//     models = iliModelMgdmWaldabstand
-//     dbschema = dbSchemaWaldabstand
-//     dataFile = file(mgdmWaldabstandXtfFileName)
-//     disableValidation = true
-// }
+task transferWaldgrenzen(type: SqlExecutor) {
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    sqlFiles = ['truncate_all_awjf_statische_waldgrenzen_mgdm_tables.sql', 'awjf_statische_waldgrenzen_mgdm.sql']
+}
 
-// task validateMgdmWaldabstandslinien(type: IliValidator, dependsOn: 'exportMgdmWaldabstandslinien') {
-//     dataFiles = [file(mgdmWaldabstandXtfFileName)]
-//     logFile = "ilivalidator_waldabstandslinien.log"
-//     configFile = "config.toml"
-//     failOnError = false
-// }
+task exportMgdmWaldgrenzen(type: Ili2pgExport, dependsOn: 'transferWaldgrenzen') {
+    database = [dbUriEdit, dbUserEdit, dbPwdEdit]
+    models = iliModelMgdmWaldgrenzen
+    dbschema = dbSchemaMgdmWaldgrenzen
+    dataFile = file(mgdmWaldgrenzenXtfFileName)
+    disableValidation = true
+}
 
-// task zipMgdmWaldabstandslinien(type: Zip, dependsOn: 'validateMgdmWaldabstandslinien'){
-//     from pathToTempFolder
-//     from "."
-//     include mgdmWaldabstandXtfFileName
-//     include "config.toml"
-//     archiveName mgdmWaldabstandZipFileName
-//     destinationDir(file(pathToTempFolder))
-// }
+task validateMgdmWaldgrenzen(type: IliValidator, dependsOn: 'exportMgdmWaldgrenzen') {
+    dataFiles = [file(mgdmWaldgrenzenXtfFileName)]
+    logFile = "ilivalidator_waldgrenzen.log"
+    //configFile = "config.toml"
+    failOnError = false
+}
 
-// task uploadMgdmWaldabstandslinien(dependsOn: 'zipMgdmWaldabstandslinien') {
-//     doLast {
-//         def response = ["curl", "-u", aiLogin, "-F", "topic=npl_waldabstandslinien", "-F",
-//                         "lv95_file=@" + Paths.get(pathToTempFolder.toString(), mgdmWaldabstandZipFileName), "-F", "publish=true",
-//                         "https://" + aiServer + "/data_agg/interlis/import"].execute().text
-//         println(response)
-//         if (response.contains("false")) {
-//             throw new GradleException()
-//         }        
-//     }
-// }
+task zipMgdmWaldgrenzen(type: Zip, dependsOn: 'validateMgdmWaldgrenzen'){
+    from pathToTempFolder
+    from "."
+    include mgdmWaldgrenzenXtfFileName
+    //include "config.toml"
+    archiveName mgdmWaldgrenzenZipFileName
+    destinationDir(file(pathToTempFolder))
+}
+
+task uploadMgdmWaldgrenzen(dependsOn: 'zipMgdmWaldgrenzen') {
+    doLast {
+        def response = ["curl", "-u", aiLogin, "-F", "topic=npl_waldgrenzen", "-F",
+                        "lv95_file=@" + Paths.get(pathToTempFolder.toString(), mgdmWaldgrenzenZipFileName), "-F", "publish=true",
+                        "https://" + aiServer + "/data_agg/interlis/import"].execute().text
+        println(response)
+        if (response.contains("false")) {
+            throw new GradleException()
+        }        
+    }
+}
 

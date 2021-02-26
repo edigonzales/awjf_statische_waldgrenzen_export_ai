@@ -14,3 +14,18 @@ java -jar /Users/stefan/apps/ili2pg-4.3.1/ili2pg-4.3.1.jar \
 --idSeqMin 1000000000000 \
 --createscript schema/awjf_statische_waldgrenzen_mgdm.sql
 ```
+
+```
+java -jar /Users/stefan/apps/ili2pg-4.3.1/ili2pg-4.3.1.jar \
+--dbschema agi_hoheitsgrenzen_pub --models SO_Hoheitsgrenzen_Publikation_20170626 \
+--defaultSrsCode 2056 --createGeomIdx --createFk --createFkIdx --createUnique --createEnumTabs --beautifyEnumDispName --createMetaInfo --createNumChecks --nameByTopic --strokeArcs \
+--createscript schema/agi_hoheitsgrenzen_pub.sql
+```
+
+```
+java -jar /Users/stefan/apps/ili2pg-4.3.1/ili2pg-4.3.1.jar \
+--dbschema agi_oereb_annex --models OeREB_ExtractAnnex_V1_0 \
+--strokeArcs --createFk --createFkIdx --createGeomIdx --createTidCol --createBasketCol --createTypeDiscriminator --createImportTabs --createMetaInfo --disableNameOptimization --defaultSrsCode 2056 --createNumChecks \
+--createUnique \
+--createscript schema/agi_oereb_annex.sql
+```
